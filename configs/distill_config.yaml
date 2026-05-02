@@ -1,0 +1,143 @@
+# ==============================================================================
+# FH-LoRA Distillation Configuration
+# ==============================================================================
+# This config file defines all hyperparameters for the 3-phase distillation
+# pipeline: Phase 1 (spatial backbone), Phase 2 (TD-LoRA temporal), and
+# optional Phase 3 (joint fine-tuning).
+# ==============================================================================
+
+# --- Teacher (frozen) --------------------------------------------------------
+TEACHER:
+  ARCH: vit_base_patch16_224
+  EMBED_DIM: 768
+  DEPTH: 12
+  NUM_HEADS: 12
+  MLP_RATIO: 4
+  PATCH_SIZE: 16
+  ATTENTION_TYPE: divided_space_time
+  PRETRAINED_WEIGHTS: checkpoints/TimeSformer_divST_8_224_SSv2.pyth
+
+# --- Student ------------------------------------------------------------------
+STUDENT:
+  ARCH: vit_small
+  EMBED_DIM: 384
+  DEPTH: 12
+  NUM_HEADS: 6
+  MLP_RATIO: 4
+  PATCH_SIZE: 16
+  DROP_PATH_RATE: 0.1
+
+# --- TD-LoRA ------------------------------------------------------------------
+TDLORA:
+  RANK: 8
+  TIME_EMBED_DIM: 64
+  ALPHA: 1.0             # LoRA scaling factor (effective scale = alpha / rank)
+
+# --- Data ---------------------------------------------------------------------
+DATA:
+  PATH_TO_DATA_DIR: data/pretrain/hyper_kvasir
+  PATH_PREFIX: .
+  TRAIN_CROP_SIZE: 224
+  TEST_CROP_SIZE: 224
+  NUM_FRAMES: 8
+  SAMPLING_RATE: 32
+  INPUT_CHANNEL_NUM: [3]
+
+# --- Phase 1: Spatial Backbone Distillation -----------------------------------
+PHASE1:
+  EPOCHS: 50
+  BATCH_SIZE_PER_GPU: 16
+  LR: 1.0e-4
+  MIN_LR: 1.0e-6
+  WEIGHT_DECAY: 0.05
+  WARMUP_EPOCHS: 5
+  CLIP_GRAD: 3.0
+  USE_FP16: true
+  SAVE_FREQ: 10
+  OUTPUT_DIR: output/phase1
+
+  # Distillation loss weights
+  ALPHA_FEAT: 1.0        # weight for intermediate feature MSE
+  ALPHA_CLS: 1.0         # weight for CLS token cosine loss
+
+  # Layers at which to match features (0-indexed block indices)
+  DISTILL_LAYERS: [2, 5, 8, 11]
+
+# --- Phase 2: TD-LoRA Temporal Distillation -----------------------------------
+PHASE2:
+  EPOCHS: 30
+  BATCH_SIZE_PER_GPU: 16
+  LR: 5.0e-4
+  MIN_LR: 1.0e-6
+  WEIGHT_DECAY: 0.01
+  WARMUP_EPOCHS: 3
+  CLIP_GRAD: 3.0
+  USE_FP16: true
+  SAVE_FREQ: 5
+  OUTPUT_DIR: output/phase2
+
+  ALPHA_FEAT: 1.0
+  ALPHA_CLS: 1.0
+
+  # Phase 1 checkpoint to load the backbone from
+  STUDENT_WEIGHTS: output/phase1/checkpoint.pth
+
+# --- Phase 3: Joint Fine-Tuning (optional) ------------------------------------
+PHASE3:
+  ENABLED: false
+  EPOCHS: 20
+  BATCH_SIZE_PER_GPU: 16
+  LR: 1.0e-5
+  MIN_LR: 1.0e-7
+  WEIGHT_DECAY: 0.01
+  WARMUP_EPOCHS: 2
+  CLIP_GRAD: 3.0
+  USE_FP16: true
+  SAVE_FREQ: 5
+  OUTPUT_DIR: output/phase3
+
+  # Downstream task settings
+  TASK_NUM_CLASSES: 2     # e.g. PolypDiag binary classification
+  BETA_DISTILL: 0.5       # loss = task + beta * distill
+  BACKBONE_LR_SCALE: 0.1  # backbone LR = LR * scale
+
+  STUDENT_WEIGHTS: output/phase2/checkpoint.pth
+
+# --- Downstream evaluation tasks ----------------------------------------------
+EVAL:
+  # PolypDiag (classification)
+  POLYPDIAG:
+    DATASET: kinetics      # adapter name in the codebase
+    NUM_CLASSES: 2
+    EPOCHS: 20
+    BATCH_SIZE: 128
+    LR: 1.0e-3
+    NUM_FRAMES: 16
+
+  # CVC-12k (segmentation)
+  CVC12K:
+    NUM_CLASSES: 1
+    EPOCHS: 150
+    BATCH_SIZE: 8
+    LR: 1.0e-4
+    IMG_SIZE: 224
+
+  # KUMC (detection)
+  KUMC:
+    EPOCHS: 24000          # iterations, not epochs
+    BATCH_SIZE: 4
+    LR: 2.5e-5
+    IMG_SIZE: 640
+
+  # Cholec80 (workflow recognition)
+  CHOLEC80:
+    NUM_CLASSES: 7
+    EPOCHS: 25
+    BATCH_SIZE: 128
+    LR: 1.0e-3
+    NUM_FRAMES: 16
+
+# --- Infrastructure -----------------------------------------------------------
+NUM_GPUS: 8
+NUM_WORKERS: 8
+SEED: 0
