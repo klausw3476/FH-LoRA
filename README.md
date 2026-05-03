@@ -174,7 +174,7 @@ python eval_teacher_ssv2.py \
   therefore left to the upstream model owner. To obtain the weights,
   please reproduce the two-phase pipeline using the [Training](#training)
   recipes; run-times and hyperparameters are documented there and in
-  Appendix B of the paper.
+  Appendix A of the paper.
 
 ## Results
 
