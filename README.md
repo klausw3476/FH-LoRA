@@ -163,22 +163,18 @@ python eval_teacher_ssv2.py \
 * **TimeSformer teacher** (8-frame, 224-resolution, SSv2-finetuned):
   download `TimeSformer_divST_8_224_SSv2.pyth` from the upstream
   TimeSformer Model Zoo
-  (<https://github.com/facebookresearch/TimeSformer#model-zoo>).
-  Place the file under `checkpoints/`.
+  (<https://github.com/facebookresearch/TimeSformer#model-zoo>) and
+  place the file under `checkpoints/`. The teacher is **not
+  redistributed in this repository**.
 
-* **FH-LoRA student** (best configuration, $r{=}48$, $h_{\mathrm{hid}}{=}32$;
-  29.70% Top-1 on SSv2): download
-  `phase2_fh_lora_r48_hhd32.pth` from
-  [`<download link to be inserted>`](TODO_LINK).
-  Place the file under `checkpoints/` and pass it to `eval_student.py`
-  via `--student_weights checkpoints/phase2_fh_lora_r48_hhd32.pth`
-  (see the [Evaluation](#evaluation) section). The file is the full
-  student state dict (ViT-Small backbone + FH-LoRA adapters + shared
-  trunk + heads), so no separate Phase-1 download is required.
-
-To reproduce the headline 29.70% number, run the evaluation command in
-the next section with `--lora_rank 48 --hyper_hidden_dim 32` and the
-checkpoint above.
+* **FH-LoRA student** (Phase-1 backbone and Phase-2 adapters): the
+  student weights are **not released**, because they are obtained by
+  distillation from the TimeSformer teacher above and would constitute
+  a derivative work of that third-party checkpoint. Redistribution is
+  therefore left to the upstream model owner. To obtain the weights,
+  please reproduce the two-phase pipeline using the [Training](#training)
+  recipes; run-times and hyperparameters are documented there and in
+  Appendix B of the paper.
 
 ## Results
 
